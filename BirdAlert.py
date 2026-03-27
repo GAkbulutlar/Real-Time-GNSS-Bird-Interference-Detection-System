@@ -13,41 +13,37 @@ warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 warnings.filterwarnings("ignore", category=urllib3.exceptions.InsecureRequestWarning)
 from datetime import datetime
 from email.message import EmailMessage
-from dotenv import load_dotenv
 
 from ultralytics import YOLO
-
-# Load environment variables from .env file
-load_dotenv()
 
 import sys
 print(sys.executable)
 print(sys.path)
 # ----------------------------
-# CONFIG (LOADED FROM ENVIRONMENT VARIABLES)
+# CONFIG (EDIT THESE)
 # ----------------------------
 # For RTSP:  "rtsp://ip:554/stream_path"  (set CAMERA_USER/CAMERA_PASS below)
 # For HTTP:  "http://ip:port/snap.jpeg"
 # For HTTPS: "https://ip:port/snap.jpeg"  (self-signed cert is OK)
-CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "https://62.154.166.188:3333")
-CAMERA_USER = os.getenv("CAMERA_USER", "dev")
-CAMERA_PASS = os.getenv("CAMERA_PASS", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "yolov8n.pt")
-TARGET_CLASS_NAMES = {os.getenv("TARGET_CLASS_NAMES", "bird")}
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.45"))
+CAMERA_SOURCE = "https://Your camera IP or hostname here"  # e.g. "http://192.168.1.100:8080/snap.jpeg"
+CAMERA_USER = "Credentials if needed, else leave empty"
+CAMERA_PASS = "Credentials if needed, else leave empty"
+MODEL_NAME = "yolov8n.pt" # or "yolov8n.pt" for smallest/faster, "yolov8m.pt" for better accuracy, etc.
+TARGET_CLASS_NAMES = {"bird"}
+CONF_THRESHOLD = 0.75
 
-CHECK_INTERVAL_SEC = int(os.getenv("CHECK_INTERVAL_SEC", "2"))
-REQUIRED_HITS = int(os.getenv("REQUIRED_HITS", "3"))
-ALERT_COOLDOWN_SEC = int(os.getenv("ALERT_COOLDOWN_SEC", "300"))
+CHECK_INTERVAL_SEC = 2
+REQUIRED_HITS = 3
+ALERT_COOLDOWN_SEC = 300
 
-SAVE_DIR = os.getenv("SAVE_DIR", "alerts")
+SAVE_DIR = "alerts"
 
-SMTP_SERVER = os.getenv("SMTP_SERVER", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "25"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-EMAIL_FROM = os.getenv("EMAIL_FROM", SMTP_USER)
-EMAIL_TO = os.getenv("EMAIL_TO", "")
+SMTP_SERVER = "your SMTP server here"  # e.g. "smtp.trimble.com"
+SMTP_PORT = "your SMTP port here"  # e.g. 25 or 465
+SMTP_USER = "SMTP username here (if required, else leave empty)"
+SMTP_PASSWORD = ""
+EMAIL_FROM = SMTP_USER
+EMAIL_TO = "your email here"
 
 
 def ensure_dir(path: str):
@@ -57,7 +53,7 @@ def ensure_dir(path: str):
 
 def _smtp_send(msg):
     """Send via internal relay (port 25, no auth/TLS) or SSL (port 465)."""
-    if SMTP_PORT == 465:
+    if SMTP_PORT == 465: # Change port number if needed, but 465 is the standard for SMTPS (SMTP over SSL)
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
             if SMTP_PASSWORD:
@@ -67,7 +63,7 @@ def _smtp_send(msg):
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
             server.sendmail(EMAIL_FROM, [EMAIL_TO], msg.as_string())
 
-
+# Sending Email with attachment (image)
 def send_email_with_image(subject: str, body: str, image_path: str):
     msg = EmailMessage()
     msg["From"] = EMAIL_FROM
@@ -189,7 +185,7 @@ def probe_snapshot_path(base: str) -> str:
     print("[WARN] Could not auto-detect snapshot path. Set CAMERA_SOURCE manually.")
     return base
 
-
+# using yolo to detect birds in the frame, returns (found:bool, annotated_frame:image, best_conf:float)
 def detect_bird(model, frame):
     results = model.predict(frame, conf=CONF_THRESHOLD, verbose=False)
     r = results[0]
