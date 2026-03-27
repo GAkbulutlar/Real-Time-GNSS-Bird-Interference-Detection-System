@@ -1,0 +1,6 @@
+opencv-python
+numpy
+requests
+urllib3
+ultralytics
+python-dotenv
